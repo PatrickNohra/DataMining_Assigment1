@@ -1,0 +1,455 @@
+---
+title: "Data Mining Assignment"
+author: "by Jad Obeid, Marwa Ghraizi and Patrick Nohra"
+date: (November 15, 2021)
+output: 
+  html_document:
+    theme: readable
+    highlight: espresso
+    number_sections: true
+    toc : yes 
+    toc_depth : 3
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+---
+In the following report, we will first explore data representing car acceptability based on multiple features. After that, we will perform and analyze four machine learning models to predict car acceptability: Logistic Regression, LDA, QDA and KNN.
+
+# Exploring the Data
+We begin by reading the data using the **<span style="color: orange;">`read.csv()`</span>** function.
+## Reading the Data
+```{r}
+#reading data from csv file
+data=read.csv('C:\\Users\\Pats\\Desktop\\DataAssign2.csv',stringsAsFactors  =FALSE)
+```
+## Cleaning the Data
+For better readability, we changed the column names into their corresponding predictors' names (Price, MaintenancePrice, NbDoors, PersonsCapacity, LuggageSize and Safety) as well as changing the response column into "Acceptability".
+```{r}
+#renaming the columns to corresponding predictors
+names(data)= c('Price', 'MaintenancePrice', 'NbDoors', 'PersonsCapacity', 'LuggageSize', 'Safety', 'Acceptability')
+```
+Seeing that the quantitative predictors NbDoors & PersonsCapacity contain non numeric data values (5more and more) we used the **<span style="color: orange;">`ifelse()`</span>** function followed by the **<span style="color: orange;">`as.numeric()`</span>** function to assign the data type as consistent numbers.
+```{r}
+#changing 5more value in NbDoors predictor to 5
+data$NbDoors <- ifelse(data$NbDoors == '5more', '5', data$NbDoors)
+#transforming the values to be of numeric type
+data$NbDoors = as.numeric(data$NbDoors)
+
+#changing 5more value in PersonsCapacity predictor to 5
+data$PersonsCapacity <- ifelse(data$PersonsCapacity == 'more', '6', data$PersonsCapacity)
+#transforming the values to be of numeric type
+data$PersonsCapacity = as.numeric(data$PersonsCapacity)
+```
+
+
+
+## Factors Ordering
+As for the qualitative predictors, their values should be mapped to factors which are data structures used to categorize and store qualitative data as levels. In our case, the level of measurement of the qualitative predictors Price, MaintenancePrice, LuggageSize and Safety is ordinal and since factors in R are ordered alphabetically, we must change them to reflect the correct order of the categories in each predictor.
+
+```{r}
+# Mapping the values of qualitative predictors to factors using factor function with a levels attribute that makes the encoding follow the correct order of the categories rather than alphabetically
+data$Price=factor(data$Price, levels = c("low","med","high","vhigh"))
+data$MaintenancePrice=factor(data$MaintenancePrice, levels = c("low","med","high","vhigh"))
+data$LuggageSize=factor(data$LuggageSize, levels = c("small","med","big"))
+data$Safety=factor(data$Safety, levels = c("low","med","high"))
+data$Acceptability=factor(data$Acceptability, levels = c("bad","good"))
+
+```
+
+## Qualitative Predictors
+In order to display the relationship between the qualitative predictors (Price, MaintenancePrice, LuggageSize and Safety) and the Acceptability, we created frequency tables to store the numbers of accepted or not accepted cars for each category of each predictor. This was done using the **<span style="color: orange;">`table()`</span>** function.
+
+```{r}
+#creating tables of each of the qualitative predictors with the response acceptability
+PriceTable = table(data$Price,data$Acceptability)
+MaintenancePriceTable = table(data$MaintenancePrice,data$Acceptability)
+LuggageTable = table(data$LuggageSize,data$Acceptability)
+SafetyTable = table(data$Safety,data$Acceptability)
+```
+
+Using the tables created in the previous parts, we plotted the results into mosaic plots that clearly display the proportions of each category in every predictor with respect to being accepted or not. This was done using the **<span style="color: orange;">`mosaicplot()`</span>** function.
+In addition to that, we conducted a chi square test for each predictor with the response. The chi square test is used to check for a relationship between two categorical variables and it indicates a P value as a measure of significance which is displayed under the mosaic plot. This was done using the tables previously created and the **<span style="color: orange;">`chisq.test()`</span>** function
+```{r, warning = FALSE}
+#creating a mosaicplot of the price of the car against acceptability, xlab and ylab are used for x-axis and y-axis labels
+#col specifies the colors which are red and green
+mosaicplot(PriceTable,main="CarPrice vs Acceptability", xlab = "Car Price",ylab="Acceptability", col=c(2,3))
+#chisquare of price and acceptability
+PriceChi = chisq.test(PriceTable,correct = F)
+cat("P value of the relationship between Price and Acceptability is:",PriceChi$p.value)
+```
+Price vs Acceptability: the mosaic plot above shows that highly or very highly priced car have bad acceptabilities whereas low priced cars mostly have good acceptabilities. In addition the P-value corresponding to it is significant. It can therefore be inferred that the higher the price of the car is the less likely it is to be accepted hence a signficant relationship between Price and Acceptability can be deduced.
+```{r}
+#creating a mosaicplot of the maintenance price of the car against acceptability, xlab and ylab are used for x-axis and y-axis labels
+#col specifies the colors which are red and green
+mosaicplot(MaintenancePriceTable,main="MaintenancePrice vs Acceptability", xlab = "Maintenance Price",ylab="Acceptability", col=c(2,3))
+#chisquare of mainenance price and acceptability
+MaintenanceChi = chisq.test(MaintenancePriceTable,correct = F)
+cat("P value of the relationship between MaintenancePrice and Acceptability is:",MaintenanceChi$p.value)
+```
+MaintenancePrice vs Acceptability: the mosaic plot above shows that the majority of highly and very highly priced car maintenances have bad acceptabilities whereas low priced car maintenances mostly have good acceptabilities. In addition to that, the corresponding P-value is small enough and significant. It can therefore be inferred that the higher the price of the maintenance of the car is the less likely it is to be accepted hence a relationship between MaintenancePrice and Acceptability can be deduced.
+```{r}
+#creating a mosaicplot of the luggage size of the car against acceptability, xlab and ylab are used for x-axis and y-axis labels
+#col specifies the colors which are red and green
+mosaicplot(LuggageTable,main="LuggageSize vs Acceptability", xlab = "Luggage Size",ylab="Acceptability", col=c(2,3))
+#chisquare of LuggageSize and Acceptability
+LuggageChi = chisq.test(LuggageTable,correct = F)
+cat("P value of the relationship between LuggageSize and Acceptability is:",LuggageChi$p.value)
+```
+LuggageSize vs Acceptability: the mosaic plot above indicated that most cars with small luggage sizes are not accepted whereas the majority of medium and big sized luggages are accepted. In addition to that the corresponding P value is significant hence a relationship can be confirmed between LuggageSize and Acceptability.
+```{r}
+#creating a mosaicplot of the safety of the car against acceptability, xlab and ylab are used for x-axis and y-axis labels
+#col specifies the colors which are red and green
+mosaicplot(SafetyTable,main="Safety vs Acceptability", xlab = "Safety Level",ylab="Acceptability", col=c(2,3))
+#chisquare of safety and acceptability
+SafetyChi = chisq.test(SafetyTable,correct = F)
+cat("P value of the relationship between LuggageSize and Acceptability is:",SafetyChi$p.value)
+```
+Safety vs Acceptability: the mosaic plot above shows that all low safety cars have bad acceptability and the majority of high safety cars have good acceptabilities. In addition to that, the corresponding P-values is small and significant hence a significant relationship can be inferred between Safety and Acceptability.
+
+
+
+## Encoding the Qualitative Predictors
+The qualitative predictors have an ordinal level of measurement hence why we encoded the strings indicating the different categories with numbers to reflect their order which turns them into quantitative predictors. 
+```{r}
+#as.numeric function is used to dummy encode the predictors after giving the correct levels using the factors function above
+data$Price=as.numeric(data$Price)
+data$MaintenancePrice = as.numeric(data$MaintenancePrice)
+data$LuggageSize = as.numeric(data$LuggageSize)
+data$Safety = as.numeric(data$Safety)
+data$Acceptability = as.numeric(data$Acceptability)
+#changing 1s into 0s and 2s into 1s since R usually starts encoding with 1 but we would like to have 0-1 for response encoding
+data$Acceptability[data$Acceptability==1]=0
+data$Acceptability[data$Acceptability==2]=1
+#returning the columns as well as their types
+str(data)
+```
+## Quantitative Predictors
+
+NbDoors and PersonsCapacity are quantitative predictors hence a boxplot would be suitable to summarize and display the relationship between them and Acceptability. We created boxplots using the **<span style="color: orange;">`plot()`</span>** function colored in red for bad acceptability and green for good acceptabilities
+```{r}
+#Number of Doors vs Acceptability Boxplot
+boxplot(data$NbDoors~data$Acceptability, col=c('red','green'), varwidth=T, xlab="Acceptability", ylab="Number of Doors")
+
+```
+NbDoors vs Acceptability: The boxplot above shows that the observations of bad acceptability are spread all over the range of values for NbDoors. Moreover, there exists an overlap of the Interquartile range (IQR) of good and bad acceptability with respect to NbDoors however the variability of the good acceptability observations is smaller than that of bad. Also both medians are equal to 4. All of this indicates that the Number of Doors does not seem to be a useful factor to discriminate well enough between good and bad acceptability.
+
+```{r}
+#Persons' Capacity vs Acceptability Boxplot
+boxplot(data$PersonsCapacity~data$Acceptability, col=c('red','green'), varwidth=T, xlab="Acceptability ", ylab="PersonsCapacity")
+
+```
+PersonsCapacity vs Acceptability: the box plot above shows that all good acceptability observations have 4 to 6 Persons' Capacities. In addition to that the median of good acceptability cars is 6 whereas the median of bad acceptability cars is 4 which allows this predictor to discriminate to an extent between good and bad predictors.
+
+## Feature Selection
+Following the analysis of the mosaic plots of Price and MaintenancePrice, a correlation was suspected between them since both of them had mostly bad acceptabilities for their high categories and good acceptability for their low and medium categories. To prove that, we conducted a chi square test which is used to check for a relationship between two categorical variables and we displayed the P value which indicated a significant correlation between these two predictors. Based on these results, we decided to remove one of these predictors (Price) and keep MaintenancePrice.
+```{r, warning= FALSE}
+#table of car price vs maintenance price
+InteractionTable = table(data$Price,data$MaintenancePrice)
+#chisquare of car price and maintenance price
+chi = chisq.test(InteractionTable,correct = F)
+cat("P value of the relationship between price and maintenance price is:",chi$p.value)
+```
+Following the analysis of the boxplot displaying the relationship between NbDoors and Acceptability, it can be concluded that this predictor does not have a good discriminatory power and therefore can be disregarded when running the machine learning models.
+
+This leaves us with 4 predictors: MaintenancePrice, LuggageSize, PersonsCapacity and Safety.
+
+# Validation Set Approach
+First, we set a random seed which is a number needed by the random number generator to work and allows us to reproduce the exact same random numbers. Then, we split our data into a training set and a test set for us to check how much the models that will be trained are able to perform on data that they never saw before. The training set consists of 75% of the data that were sampled without replacement and with equal probabilities of being picked.
+```{r}
+#setting seed to 100
+set.seed(100)
+#taking 75% of the number of rows as a sample size
+sample_size <- floor(0.75 * nrow(data))
+# returning a vector of randomly picked indices of size equal to sample size
+train_index <- sample(seq_len(nrow(data)), size = sample_size)
+#assigning the rows in the dataset which have indices in the train_index to be in the training set
+train <- data[train_index, ]
+#assigning the remaining rows to be in the test set
+test <- data[-train_index, ]
+```
+
+# Logistic Regression
+## Training & Testing
+We create a Logistic Regression Model using the training data subset that we have already created This logistic regression model takes into consideration the 4  predictors we selected. Following that, we used the trained model to predict the responses of the test set.
+```{r, warning = FALSE}
+#logistic model with acceptability as response and maintenanceprice, luggagesize, personscapacity, and safety as predictors
+#using the training set to train the model
+glm.fit=glm(Acceptability~MaintenancePrice+LuggageSize+PersonsCapacity+Safety,data=train,family=binomial)
+#pringint summary of our model
+summary(glm.fit)
+#testing the model by predicting the response on the test dataset (returning a probability value) and saving it
+glm.probs <- predict(glm.fit,newdata= test,type = "response")
+# if the probability is greater than 0.5 then its good (1) else it is bad (0) 
+glm.pred <- ifelse(glm.probs > 0.5,1,0)
+```
+The summary displays the P-values of each of the 4 predictors which indicates high significance for all of them. It also displays the intercept and the coefficients.
+
+## Results & Analysis
+```{r}
+#table of the predictions of model on test set vs the real values being predicted
+logConfusionMatrix= table(glm.pred, test$Acceptability)
+#calculating test error rate by taking the mean function of false predictions
+cat("Logistic Regression Model Test Error Rate:",mean(glm.pred != test$Acceptability),"\n")
+#displaying confusion matrix
+cat("Logistic Regression Model Confusion Matrix:")
+logConfusionMatrix
+#calculating accuracy by summing the correct predictions and diving it on the total number of predictions 
+cat("\nFraction of correct predictions (Accuracy):",sum(diag(logConfusionMatrix))/sum(logConfusionMatrix)*100,"%\n")
+#calculating precision by dividing the correct positive predictions over the sum of total positive predictions (TP + FP)
+logPrec = logConfusionMatrix[4]/sum(glm.pred == 1) 
+#calculating precision by dividing the correct positive predictions over the sum of total real positive values (TP + FN)
+logrecall =  (logConfusionMatrix[4]/(logConfusionMatrix[4]+logConfusionMatrix[3]))
+#printing the values out
+cat("Precision:", logPrec * 100, "%\n")
+cat("Recall: ", logrecall*100,"%\n")
+#calculating the f1s score
+f1Log = (2*logrecall*logPrec)/(logPrec+logrecall)
+cat("F1Score: ", f1Log,"\n")
+```
+The metrics evaluating our logistic regression model reflect a good performance as it has a low MSE (0.1692308) which means that the fraction of the false predictions is low. 
+In addition, the accuracy showed that the model correctly classified 83.07692% of the observations.
+The precision shows that out of all the positively predicted observations (good acceptability) 85.29412% are actually positive.
+The recall indicates that out of all the actual positive observations, 82.85714% were positively predicted.
+
+Furthermore, the confusion matrix displays the number of false positives, meaning our model predicted the car to have a good acceptability when it actually has a bad one. We can also see the number of false negatives, meaning our model predicted the car to have a bad acceptability when it actually has a good one.
+```{r}
+#printing out false positives
+cat("False Positives:", logConfusionMatrix[2] ,"out of",sum(glm.pred == 1),"good predictions\n")
+#printing out false negatives
+cat("False Negatives:", logConfusionMatrix[3] ,"out of",sum(glm.pred == 0),"bad predictions")
+```
+
+ROC curves illustrate the diagnostic ability of a binary classifier when its discrimination threshold is varied. The below ROC curve corresponds to our Logistic Regression Model. The area under the curve corresponds to the AUC score which is equal to 0.9171429 meaning that the model has a high ability to distinguish between classes.
+```{r}
+library(ROCR)
+#creating a ROC curve using the ROCR library
+newlog = prediction(glm.probs,test$Acceptability)
+#calculating the tpr and fpr for different thresholds and saving them
+roccurve=performance(newlog,"tpr","fpr")
+#plotting the ROC curve
+plot(roccurve,colorize=T)
+#performance instance used to store area under the curve
+aucLog = performance(newlog,"auc")
+#calculating the area under the curve 
+LogRegAUC = as.numeric(aucLog@y.values)
+LogRegAUC
+```
+
+# LDA
+## Training & Testing
+We create a Linear Discriminant Analysis (LDA) Model using the training data subset that we have already created. Similarly, this LDA model takes into consideration the 4  predictors we selected. Following that, we used the trained model to predict the responses of the test set.
+```{r}
+library(MASS)
+#training LDA model on training data having acceptability as response and the same 4 predictors as the logestic regression model
+lda.fit=lda(Acceptability~MaintenancePrice+LuggageSize+PersonsCapacity+Safety,data=train)
+lda.fit
+#plotting the model
+plot(lda.fit)
+```
+
+```{r}
+#testing the model by predicting the responses of the test dataset and saving them in lda.pred
+lda.pred=predict(lda.fit, test)
+#taking the results of the prediction 
+lda.class=lda.pred$class
+```
+
+## Results & Analysis
+```{r}
+#MSE, CONFUSION MATRIC AND DIFFERENT METRICS
+#confusion matrix of predicted responses vs real responses
+LDAConfusionMatrix= table(lda.class, test$Acceptability)
+#calculating error rate by taking the mean function of the number of incorrect predictions
+cat("LDA Test Error Rate:",mean(lda.class != test$Acceptability),"\n")
+cat("\nLDA Confusion Matrix:")
+LDAConfusionMatrix
+cat("\nFraction of correct predictions (Accuracy):",sum(diag(LDAConfusionMatrix))/sum(LDAConfusionMatrix)*100,"%\n")
+#precision, recall,f1score same as logistic regression
+LDAPrec = LDAConfusionMatrix[4]/sum(lda.class == 1) 
+LDArecall =  (LDAConfusionMatrix[4]/(LDAConfusionMatrix[4]+LDAConfusionMatrix[3]))
+
+cat("Precision:", LDAPrec * 100, "%\n")
+cat("Recall: ", LDArecall*100,"%\n")
+f1LDA = (2*LDArecall*LDAPrec)/(LDAPrec+LDArecall)
+cat("F1Score: ", f1LDA,"\n")
+#False positives and negatives calculated same as logistic regression
+cat("False Positives:", LDAConfusionMatrix[2] ,"out of",sum(lda.class == 1),"good predictions\n")
+cat("False Negatives:", LDAConfusionMatrix[3] ,"out of",sum(lda.class == 0),"bad predictions")
+```
+The metrics evaluating our logistic regression model reflect a good performance as it has a low MSE (0.1692308) which means that the fraction of the false predictions is low. 
+In addition, the accuracy showed that the model correctly classified 83.07692% of the observations.
+The precision shows that out of all the positively predicted observations (good acceptability) 83.33333% are actually positive.
+The recall indicates that out of all the actual positive observations, 85.71429% were positively predicted.
+
+The below ROC curve corresponds to our LDA Model. The area under the curve corresponds to the AUC score which is equal to 0.9161905 meaning that the model has a high ability to distinguish between classes.
+```{r}
+#ROC CURVE AND AUC
+#Calculated in the same method as logistic regression above
+newlogLDA=prediction(lda.pred$posterior[,2], test$Acceptability)
+LDAROC=performance(newlogLDA,"tpr","fpr")
+plot(LDAROC,colorize=T)
+aucLDA.tmp = performance(newlogLDA,"auc")
+aucLDA = as.numeric(aucLDA.tmp@y.values)
+print(aucLDA)
+```
+
+# QDA
+## Training & Testing
+We create a QDA Model using the training data subset that we have already created. Similarly, this LDA model takes into consideration the 4  predictors we selected. Following that, we used the trained model to predict the responses of the test set.
+```{r}
+#training qda model on training data by taking acceptability as response and same 4 predictors as previous models
+qda.fit=qda(Acceptability~MaintenancePrice+LuggageSize+PersonsCapacity+Safety,data=train)
+qda.fit
+```
+```{r}
+#testing qda model by predicting response of test dataset
+qda.pred = predict(qda.fit,test)
+#taking the results and saving them
+qda.class=qda.pred$class
+
+```
+
+## Results & Analysis
+```{r}
+#MSE, CONFUSION MATRIC AND DIFFERENT METRICS
+#creating confusion matrix of the predicted responses vs their real values
+QDAConfusionMatrix= table(qda.class, test$Acceptability)
+#calculating test error rate in the same way as previous models
+cat("QDA Test Error Rate:",mean(qda.class != test$Acceptability),"\n")
+cat("QDA Confusion Matrix:")
+QDAConfusionMatrix
+#calculating Accuracy
+cat("Fraction of correct predictions (Accuracy):",sum(diag(QDAConfusionMatrix))/sum(QDAConfusionMatrix)*100,"%\n")
+QDAPrec = QDAConfusionMatrix[4]/sum(qda.class == 1) 
+QDArecall =  (QDAConfusionMatrix[4]/(QDAConfusionMatrix[4]+QDAConfusionMatrix[3]))
+#calculating Precision and Recall
+cat("Precision:", QDAPrec * 100, "%\n")
+cat("Recall: ", QDArecall*100,"%\n")
+#calculating qdas f1score
+f1QDA = (2*QDArecall*QDAPrec)/(QDAPrec+QDArecall)
+cat("F1Score: ", f1QDA,"\n")
+#calculating the number of false positives and false negatives
+cat("False Positives:", QDAConfusionMatrix[2] ,"out of",sum(qda.class == 1),"good predictions\n")
+cat("False Negatives:", QDAConfusionMatrix[3] ,"out of",sum(qda.class == 0),"bad predictions")
+```
+The metrics evaluating our logistic regression model reflect a good performance as it has a low MSE (0.1384615) which means that the fraction of the false predictions is low. 
+In addition, the accuracy showed that the model correctly classified 86.15385 % of the observations.
+The precision shows that out of all the positively predicted observations (good acceptability) 84.21053% are actually positive.
+The recall indicates that out of all the actual positive observations, 91.42857% were positively predicted.
+
+The below ROC curve corresponds to our QDA Model. The area under the curve corresponds to the AUC score which is equal to  0.9190476 meaning that the model has a high ability to distinguish between classes.
+```{r}
+#Computing the ROC and AUC of the qda model
+newlogQDA=prediction(qda.pred$posterior[,2], test$Acceptability)
+#testing the performance of difference thresholds
+QDAROC=performance(newlogQDA,"tpr","fpr")
+#plotting the qda ROC curve
+plot(QDAROC,colorize=T)
+auc.tmpqda<- performance(newlogQDA,"auc")
+aucqda<- as.numeric(auc.tmpqda@y.values)
+#printing the AUC value
+print(aucqda)
+```
+
+# Models Comparison
+```{r}
+#plotting the ROC curves of the different produced models in the same plot by adding them using add attribute
+plot(roccurve,col="blue")
+plot(LDAROC,add = TRUE, col="orange")
+plot(QDAROC,add=TRUE,col="green")
+
+```
+
+When plotting the three ROC curves of the 3 models we ran together in one graph, we can clearly illustrate that QDA (green) performs slightly better than the Logistic Regression (blue) and LDA (orange) who perform almost identically. This is also shown through the test MSE which is the lowest for QDA. It should be noted that LDA and logistic regression had the exact same MSE.
+
+# KNN
+```{r}
+library(class)
+#setting a new seed for the KNN
+set.seed(12234)
+#taking predictors from the training dataset and binding them to train.X vector
+train.X = cbind(train$MaintenancePrice, train$PersonsCapacity, train$LuggageSize,train$Safety)
+#taking predictors from test dataset and binding them to test.X vector
+test.X = cbind(test$MaintenancePrice, test$PersonsCapacity, test$LuggageSize,test$Safety)
+train.Acceptability = train$Acceptability
+#vector containing different values of k that will be used
+kvalues = c(1,3,9,15,20,25)
+#empty list to hold predictions produced later on
+knnpredictions = list()
+#looping over k values
+for (k in kvalues){
+#performing knn model 
+knn.pred = knn(train.X,test.X,train.Acceptability,k=k)
+#adding results to the empty list
+knnpredictions[[length(knnpredictions)+1]] <- list(knn.pred)
+}
+#counter to help printing the value of k 
+counter=1
+#empty vector to store the test errors of each model 
+knnerrors = c()
+for ( predictions in knnpredictions){
+  #changing the list into a vector called knn.pred 
+  knn.pred = unlist(predictions)
+  #producing a table of the predicted responses vs the true responses
+  knntable = table(knn.pred,test$Acceptability)
+  cat("for k =",kvalues[counter],":\n")
+  #calculating the accuracy and test error for each model of a specific k value 
+  cat("Accuracy:",sum(diag(knntable))/sum(knntable)*100,"%\n")
+  cat("Test Error:",(1-sum(diag(knntable))/sum(knntable)),"\n")
+  #saving the knnerrors
+  knnerrors <- c(knnerrors,(1-sum(diag(knntable))/sum(knntable))*100)
+  #calculating the number of false positives and false negatives
+  cat("False Positives:", knntable[2] ,"out of",sum(knn.pred ==1),"\n")
+  cat("False Negatives:", knntable[3] ,"out of",sum(knn.pred ==0),"\n\n")
+  counter = counter+1 
+}
+```
+We can see that for k = 9 we obtain the least amount of errors and the highest accuracy between the k values tested on. The model works really well when classifying cars with good acceptability when they are indeed good since it had only 1 false negative bad classified cars are correct. The model also worked well when classifying the cars with bad acceptability since it only classified 10 bad cars as good out of 44 good cars (false positives) and the rest are classified correctly.
+
+Find below a graph displaying the different K values used with their corresponding MSEs. As expected the graph shows a U shape whose lowest point corresponds to k=9. 
+```{r}
+#ploting test error vs value of k
+plot(kvalues,knnerrors,type = "b",col="blue",main="K-Values vs Test Error Rate",xlab="K-Values",ylab="Test Error Rate (%)")
+```
+
+
+# 5-Fold Cross Validation
+In the following step, we applied a 5-Fold Cross Validation on the Logistic Regression Model using the **<span style="color: orange;">`cv.glm()`</span>** function and we displayed the cross-validation estimate of prediction error
+```{r,warning=FALSE}
+library(boot)
+#setting seed
+set.seed(20)
+glm.fitLogReg=glm(Acceptability~MaintenancePrice+LuggageSize+PersonsCapacity+Safety,data=data,family=binomial)
+cv.error=cv.glm(data,glm.fitLogReg,K=5)$delta[1]
+cv.error
+```
+## Comparison with Validation Set Approach
+The estimate of prediction error (0.1315544) obtained from the 5-fold cross validation is much better than that of the validation set approach (0.169) which can be explained by the fact that the dataset is relatively small and the 5-fold cross validation approach uses all of the data using k=5 different models. The model may be yielding better results in the 5-fold cross validation approach because it is being trained on more data than in the validation set approach which usually overestimates the test error rate
+
+# Bootstrap
+We used the bootstrap method to assess the variability of the coefficient estimates and predictions from the logistic regression model.
+```{r, warning = FALSE}
+#creating the boostrap function
+bootstrap.fn=function(data,index){
+return(coef(glm(Acceptability~MaintenancePrice+LuggageSize+PersonsCapacity+Safety,data=data,family=binomial,subset=index)))
+}
+#running the function on the current dataset
+cat("Using the current dataset results:\n")
+bootstrap.fn(data,1:nrow(data))
+
+#running the function on equally sized dataset with random sampling from our original observations
+cat("Randomly sampling from the pre-existing observations with replacement results:\n")
+set.seed(1)
+bootstrap.fn(data,sample(nrow(data),nrow(data),replace=T))
+
+#computing the standard errors of 10 bootstrap estimates
+boot(data ,bootstrap.fn ,10)
+cat("The bootstrap estimate for the standard error of the coefficient of:
+- MaintenancePrice is 0.3128844
+- LuggageSize is 0.2285338
+- PersonsCapacity 0.1470900
+- Safety is 0.3354310\n")
+```
+
+# Conclusion
+In conclusion, we explored in this assignment 4 different machine learning models to predict the acceptability of cars depending on certain features after cleaning the data and graphically exploring the correlation between these features and the response. All models performed relatively well and were able to yield accurate predictions, the best performing model was QDA and the worst performing model was KNN. Using the 5-fold cross validation approach we were able to deduce that it yields better estimates of the test MSEs compared to the regulation validation set approach using which we trained the models specifically the logistic regression one. Lastly, using the Bootstrap techniques we were able to display the variability of the coefficient estimates and predictions for the logistic regression model.
